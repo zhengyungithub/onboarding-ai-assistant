@@ -10,5 +10,5 @@
   <!-- 对话气泡 -->
   <path d="M14 24 a7 7 0 0 1 7-7 h22 a7 7 0 0 1 7 7 v12 a7 7 0 0 1 -7 7 h-14 l-9 9 v-9 a7 7 0 0 1 -6 -7 z" fill="#ffffff"/>
   <!-- 智字 -->
-  <text x="32" y="35.5" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="19" font-weight="700" fill="#6366f1">智</text>
+  <text x="32" y="35.5" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="19" font-weight="700" fill="#6366f1">知</text>
 </svg>

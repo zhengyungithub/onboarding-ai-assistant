@@ -3,7 +3,7 @@
     <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
       <div class="logo">
         <el-icon :size="24" color="#6366f1"><ChatDotRound /></el-icon>
-        <span v-if="!collapsed">智图 · 业务问答</span>
+        <span v-if="!collapsed">知途 · 业务问答</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -223,7 +223,7 @@ function onBellOpen() {
 }
 
 const activeMenu = computed(() => route.path)
-const currentTitle = computed(() => route.meta?.title || '智图 · 业务问答')
+const currentTitle = computed(() => route.meta?.title || '知途 · 业务问答')
 
 function handleCommand(command) {
   if (command === 'logout') {
