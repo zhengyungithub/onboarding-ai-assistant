@@ -2,8 +2,8 @@
   <div class="login-container">
     <el-card class="login-card">
       <div class="login-header">
-        <h2>新员工入职 AI 问答助手</h2>
-        <p>请使用管理员分配的账号登录</p>
+        <h2>智图 · 入职 AI 问答助手</h2>
+        <p>新员工的问题，来这里问 — 请使用管理员分配的账号登录</p>
       </div>
       <el-form :model="loginForm" label-width="0" @submit.prevent="handleLogin">
         <el-form-item>

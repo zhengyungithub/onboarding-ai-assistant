@@ -6,7 +6,7 @@
   <div class="public-page">
     <div class="brand">
       <span class="brand-dot"></span>
-      <span>业务问答助手 · 材料确认</span>
+      <span>智图 · 材料确认</span>
     </div>
 
     <el-card v-if="state === 'loading'" shadow="never" class="card">
