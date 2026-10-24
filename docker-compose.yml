@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hr_ai_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hr_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: hr_ai_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+
+  backend:
+    build: ./backend
+    container_name: hr_ai_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hr_ai
+      QDRANT_URL: http://qdrant:6333
+      SECRET_KEY: ${SECRET_KEY:-hr-ai-secret-key-change-in-production}
+      FERNET_KEY: ${FERNET_KEY:-}
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - qdrant
+
+  frontend:
+    build: ./frontend
+    container_name: hr_ai_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

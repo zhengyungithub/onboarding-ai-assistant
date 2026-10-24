@@ -1,0 +1,27 @@
+# Caddy 反代样例（推荐：自动申请并续期 HTTPS 证书）
+# 安装：apt install caddy （或从 https://caddyserver.com 下载）
+# 用法：域名已写为实际子域名，放到 /etc/caddy/Caddyfile，然后 systemctl reload caddy
+#
+# 前提：DNS 已把子域名 A 记录指向本服务器；80/443 端口可公网访问
+
+# 本项目实际域名（主域名 zhengyun.online 已备案，子域名无需单独备案）
+# 前提：DNS 已添加 A 记录 zhitu.zhengyun.online → 43.142.33.191（你的服务器公网 IP）；安全组放行 80/443
+
+zhitu.zhengyun.online {
+	# 全部转发给后端（后端已托管前端 dist，单端口即可）
+	reverse_proxy 127.0.0.1:8000 {
+		# SSE 流式回答必须逐块下发，不能缓冲
+		flush_interval -1
+	}
+
+	# 基础安全头
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# 压缩
+	encode zstd gzip
+}

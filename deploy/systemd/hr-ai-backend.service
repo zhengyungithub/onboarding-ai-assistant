@@ -1,0 +1,21 @@
+# systemd 单元：后端（uvicorn 单 worker；SQLite + SSE 场景不要加 workers）
+[Unit]
+Description=HR AI Assistant Backend (uvicorn)
+After=network.target hr-ai-qdrant.service
+Wants=hr-ai-qdrant.service
+
+[Service]
+Type=simple
+# ⚠️ 按实际部署路径修改 User / WorkingDirectory / ExecStart
+User=www-data
+WorkingDirectory=/opt/hr-ai/backend
+ExecStart=/opt/hr-ai/backend/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+Environment=NO_PROXY=*
+Environment=no_proxy=*
+# 生产环境变量也可全部写在这份文件里（优先级高于 .env）
+# EnvironmentFile=/opt/hr-ai/backend/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+# systemd 单元：Qdrant（Linux 原生二进制；不想装 Docker 时用这个）
+# 二进制下载：https://github.com/qdrant/qdrant/releases
+#   qdrant-x86_64-unknown-linux-gnu.tar.gz → 解压到 /opt/hr-ai/qdrant/qdrant
+# 配置文件拷贝项目里的 qdrant-native/config/config.yaml 到 /opt/hr-ai/qdrant/config.yaml
+#   并把其中 storage 路径改为 /opt/hr-ai/data/qdrant
+[Unit]
+Description=Qdrant Vector Database
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/hr-ai/qdrant
+ExecStart=/opt/hr-ai/qdrant/qdrant --config-path /opt/hr-ai/qdrant/config.yaml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

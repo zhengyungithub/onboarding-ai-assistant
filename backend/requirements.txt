@@ -1,0 +1,26 @@
+# 后端依赖
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.35
+psycopg[binary]==3.3.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+python-multipart==0.0.12
+cryptography==43.0.1
+python-dotenv==1.0.1
+
+# 向量库 & RAG
+qdrant-client==1.19.1
+langchain==1.4.3
+langchain-openai==1.6.7
+langgraph==1.2.12
+langgraph-checkpoint-sqlite==3.1.1
+jieba==0.42.1
+
+# 文档解析（可选，Docling 在 Python 3.13 上可能有兼容问题）
+docling
+
+# LLM
+openai==3.24.0

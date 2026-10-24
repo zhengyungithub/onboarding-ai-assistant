@@ -1,0 +1,49 @@
+# ===== 敏感/环境文件（绝不能进仓库）=====
+backend/.env
+.env
+.env.*
+*.env
+*.env.bak*
+!deploy/env.production.example
+!backend/.env.example
+backend/hr_ai.db
+backend/*.db
+*.db-shm
+*.db-wal
+
+# 运行数据与上传附件
+backend/uploads/
+backend/app/uploads/
+backend/data/
+data/
+logs/
+
+# ===== Python =====
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ===== Node / 前端 =====
+node_modules/
+frontend/dist
+.build_check
+*.local
+
+# ===== 本机运行时（Windows 启动脚本与内网穿透，环境特定）=====
+qdrant-native/
+cpolar*
+*.zip
+
+# ===== 工具会话与个人数据 =====
+.workbuddy/
+.trae/
+.npm-cache/
+
+# ===== 临时文件 =====
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
