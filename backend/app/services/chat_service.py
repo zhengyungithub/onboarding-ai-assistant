@@ -718,9 +718,35 @@ async def get_answer_stream(user: User, question: str, db: Session) -> AsyncGene
     }
     yield f"data: {json.dumps(ref_data, ensure_ascii=False)}\n\n"
 
-    # 流式输出回答
-    async for chunk in llm.astream(messages):
-        if chunk.content:
-            yield f"data: {chunk.content}\n\n"
+    # 流式输出回答（模型侧异常要转成一条可读回答返回，不能让 SSE 直接断掉——
+    # 否则前端只会显示笼统的 "network error"，用户无从得知是 Key 配错了）
+    try:
+        async for chunk in llm.astream(messages):
+            if chunk.content:
+                yield f"data: {chunk.content}\n\n"
+    except Exception as e:  # noqa: BLE001
+        yield f"data: {_llm_stream_error_text(e)}\n\n"
 
     yield "data: [DONE]\n\n"
+
+
+def _llm_stream_error_text(e: Exception) -> str:
+    """把模型流式调用异常翻译成用户能行动的提示（宁粗勿错，按状态码/类型名判断）"""
+    type_name = type(e).__name__
+    text = str(e)
+    if "401" in text or "Authentication" in type_name or "invalid_api_key" in text:
+        return (
+            "模型服务认证失败（401）：API Key 无效，或 Key 与 Base URL 不是同一家平台"
+            "（例如 DeepSeek 的 Key 配了百炼的地址）。请超管在【API Key 配置】页核对。"
+        )
+    if "404" in text or "NotFound" in type_name:
+        return (
+            "模型接口不存在（404）：请检查 Base URL 与模型名是否配套——"
+            "百炼地址 https://dashscope.aliyuncs.com/compatible-mode/v1 配 qwen 系列模型"
+            "（Embedding 用 text-embedding-v3）；"
+            "DeepSeek 地址 https://api.deepseek.com 配 deepseek-chat，"
+            "且 DeepSeek 不提供 Embedding 接口。"
+        )
+    if "429" in text or "RateLimit" in type_name:
+        return "模型服务限流（429）：请求太频繁或额度不足，请稍后重试。"
+    return f"模型调用失败：{text[:200]}"
