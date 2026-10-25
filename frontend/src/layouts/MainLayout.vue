@@ -53,12 +53,12 @@
           <el-icon><Connection /></el-icon>
           <span>流程配置</span>
         </el-menu-item>
-        <el-menu-item index="/settings">
+        <el-menu-item v-if="userStore.isSuperAdmin()" index="/settings">
           <el-icon><Setting /></el-icon>
           <span>API Key 配置</span>
         </el-menu-item>
 
-        <el-sub-menu v-if="userStore.isStaff()" index="admin">
+        <el-sub-menu v-if="userStore.isSuperAdmin()" index="admin">
           <template #title>
             <el-icon><OfficeBuilding /></el-icon>
             <span>后台管理</span>
@@ -129,18 +129,13 @@
           <span class="user-info">
             <el-avatar :size="32" :icon="UserFilled" />
             <span class="username">{{ userStore.user?.username }}</span>
-            <el-tag
-              v-if="userStore.isStaff()"
-              size="small"
-              :type="userStore.isSuperAdmin() ? 'danger' : 'warning'"
-              effect="plain"
-            >
+            <el-tag v-if="userStore.isSuperAdmin()" size="small" type="danger" effect="plain">
               {{ userStore.roleLabel() }}
             </el-tag>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="settings">API Key 配置</el-dropdown-item>
+              <el-dropdown-item v-if="userStore.isSuperAdmin()" command="settings">API Key 配置</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>

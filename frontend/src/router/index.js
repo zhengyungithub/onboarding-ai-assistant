@@ -60,7 +60,7 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/Settings.vue'),
-        meta: { title: 'API Key 配置' },
+        meta: { title: 'API Key 配置', requiresStaff: true },
       },
       // 知识库管理、资料入库、流程配置（所有用户可访问，数据按 user_id 隔离）
       {

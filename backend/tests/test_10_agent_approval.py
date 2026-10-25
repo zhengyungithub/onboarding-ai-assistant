@@ -325,14 +325,14 @@ def test_approve_non_pending_run_returns_409(client, db, ctx):
 
 def test_approve_others_run_returns_403(client, db, ctx):
     row = _make_run(db, "regr_ua", status="awaiting_approval")
-    # 管理员不是该运行的所有者，且非超管 → 拒绝
+    # 两级角色模型：普通用户不是该运行的所有者 → 拒绝（审批限所有者或超管）
     r = client.post(
         f"/api/agent/approve/{row.id}",
         json={"approved": True},
-        headers=hdr(ctx["admin"]["token"]),
+        headers=hdr(ctx["ub"]["token"]),
     )
-    expect(r, 403, "审批他人运行")
-    assert "无权" in body(r)["detail"]
+    expect(r, 403, "普通用户审批他人运行")
+    assert body(r)["detail"], "403 必须带可读原因（守卫文案：需要管理员权限 / 无权）"
 
 
 def test_approve_requires_staff(client, db, ctx):

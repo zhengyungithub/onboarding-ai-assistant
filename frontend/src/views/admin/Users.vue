@@ -128,7 +128,7 @@
               :value="opt.value"
             />
           </el-select>
-          <div class="role-tip">{{ canChangeEditRole ? roleTip(editForm.role) : '仅超级管理员可调整管理员角色' }}</div>
+          <div class="role-tip">{{ canChangeEditRole ? roleTip(editForm.role) : '超管账号不可调整角色' }}</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -148,28 +148,26 @@ import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 
-const ROLE_LABELS = { user: '普通用户', admin: '管理员', super_admin: '超级管理员' }
+const ROLE_LABELS = { user: '普通用户', admin: '普通用户', super_admin: '超级管理员' } // 历史 admin 按普通用户展示
 const ROLE_TIPS = {
   user: '普通用户：使用 AI 问答、流程步骤、任务与备忘录，并检索管理员共享的知识。',
-  admin: '管理员：维护知识库 / 资料 / 流程 / 评测数据，可管理普通用户，创建的内容全员共享。',
-  super_admin: '超级管理员：系统唯一账号，额外拥有角色分配与管理员管理能力，不可删除或降级。',
+  user: '普通用户：全部业务功能可用，内容默认仅自己可见，可检索被共享的内容。',
+  super_admin: '超级管理员：系统唯一账号，额外拥有 API Key 配置、评测数据与用户管理能力，不可删除或降级。',
 }
 
 const roleLabel = (role) => ROLE_LABELS[role] || role
 const roleTip = (role) => ROLE_TIPS[role] || ''
-const roleTagType = (role) => (role === 'super_admin' ? 'danger' : role === 'admin' ? 'warning' : 'info')
+const roleTagType = (role) => (role === 'super_admin' ? 'danger' : 'info')
 
 // 可分配角色：超管可建管理员，管理员只能建普通用户
 const assignableRoleOptions = computed(() => {
-  const options = [{ label: '普通用户', value: 'user' }]
-  if (userStore.isSuperAdmin()) options.push({ label: '管理员', value: 'admin' })
-  return options
+  // 两级角色：超管也只能创建普通用户（超管唯一，不可被创建）
+  return [{ label: '普通用户', value: 'user' }]
 })
 
 // 编辑时可选角色：超管可改角色；管理员编辑普通用户时角色锁定
 const editRoleOptions = computed(() => {
   const options = [{ label: '普通用户', value: 'user' }]
-  if (userStore.isSuperAdmin()) options.push({ label: '管理员', value: 'admin' })
   if (editForm.value.role === 'super_admin') options.unshift({ label: '超级管理员', value: 'super_admin' })
   return options
 })

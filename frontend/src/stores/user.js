@@ -28,12 +28,12 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('user')
   }
 
-  // 角色：user 普通用户 / admin 管理员 / super_admin 超管
+  // 角色：两级模型（user 普通用户 / super_admin 超管）；历史 admin 按普通用户展示
   const isAdmin = () => user.value?.role === 'admin' || user.value?.role === 'super_admin'
-  const isStaff = () => isAdmin()
+  const isStaff = () => user.value?.role === 'super_admin'
   const isSuperAdmin = () => user.value?.role === 'super_admin'
   const roleLabel = () =>
-    ({ super_admin: '超级管理员', admin: '管理员', user: '普通用户' })[user.value?.role] || ''
+    ({ super_admin: '超级管理员', admin: '普通用户', user: '普通用户' })[user.value?.role] || ''
 
   return { token, user, login, fetchUser, logout, isAdmin, isStaff, isSuperAdmin, roleLabel }
 })

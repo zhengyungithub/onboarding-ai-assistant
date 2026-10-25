@@ -55,11 +55,29 @@ def db():
 
 @pytest.fixture(scope="session")
 def ctx(client):
-    """账号矩阵：内置超管 + 1 个管理员 + 3 个普通用户（ua / ub / uc）"""
-    sa_token = login(client, SUPER_ADMIN_USERNAME, SUPER_ADMIN_PASSWORD)
+    """账号矩阵：内置超管 + 1 个后台账号（regr_admin）+ 3 个普通用户（ua / ub / uc）
 
-    admin = create_user(client, sa_token, f"{RUN_TAG}_admin", "admin")
-    admin_token = login(client, admin["username"])
+    两级角色模型（2026-10-25）：历史 admin 角色已取消。
+    大量工具级用例通过用户名 regr_admin 取「一个具备后台权限的账号」，
+    故该账号照常创建（API 层建为普通用户），再在库中直接提升为超管——
+    超管唯一性约束只存在于 API 层（不可创建/提升），库中多个超管身份仅供测试。
+    """
+    sa_token = login(client, SUPER_ADMIN_USERNAME, SUPER_ADMIN_PASSWORD)
+    sa_me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {sa_token}"}).json()
+
+    # 兼容槽位：regr_admin（工具级用例的固定主角）
+    legacy = create_user(client, sa_token, f"{RUN_TAG}_admin", "user")
+    legacy_token = login(client, legacy["username"])
+    from app.db.session import SessionLocal
+    from app.models import User as UserModel
+    s = SessionLocal()
+    try:
+        _u = s.query(UserModel).filter(UserModel.username == legacy["username"]).first()
+        _u.role = "super_admin"
+        s.commit()
+    finally:
+        s.close()
+    legacy_me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {legacy_token}"}).json()
 
     users = {}
     for name in ("ua", "ub", "uc"):
@@ -69,7 +87,7 @@ def ctx(client):
     return {
         "sa_token": sa_token,
         "super": {"username": SUPER_ADMIN_USERNAME},
-        "admin": {"user": admin, "token": admin_token},
+        "admin": {"user": legacy_me, "token": legacy_token},
         "ua": users["ua"],
         "ub": users["ub"],
         "uc": users["uc"],

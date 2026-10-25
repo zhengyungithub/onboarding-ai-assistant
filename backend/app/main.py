@@ -176,6 +176,13 @@ def init_migrate():
 
     db = OrmSession(bind=engine)
     try:
+        # 角色模型收敛（2026-10-25）：两级角色（超管 + 用户），历史 admin 统一降级为 user
+        legacy_admins = db.query(User).filter(User.role == "admin").all()
+        if legacy_admins:
+            for u in legacy_admins:
+                u.role = "user"
+            db.commit()
+            print(f"[迁移] 已将 {len(legacy_admins)} 个历史 admin 角色用户降级为普通用户")
         admin = db.query(User).filter(User.username == settings.ADMIN_USERNAME).first()
         if admin and admin.role != ROLE_SUPER_ADMIN:
             admin.role = ROLE_SUPER_ADMIN

@@ -605,9 +605,9 @@ def test_citation_stats_scope_guard(client, ctx):
     r = client.get(
         "/api/evaluation/citation-stats",
         params={"scope": "all"},
-        headers=hdr(ctx["admin"]["token"]),
+        headers=hdr(ctx["ua"]["token"]),
     )
-    expect(r, 403, "管理员查全站引用正确率")
+    expect(r, 403, "普通用户查全站引用正确率")
 
     r2 = client.get(
         "/api/evaluation/citation-stats",

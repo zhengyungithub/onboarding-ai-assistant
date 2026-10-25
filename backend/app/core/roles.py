@@ -1,25 +1,27 @@
 """角色与数据可见范围
 
-角色模型（三级分隔）：
-- user        普通用户：消费端（AI 问答 / 流程步骤 / 我的任务 / 备忘录），
-              知识库等页面可见，但只能操作自己的数据，检索范围 = 自己的 + 被共享的
-- admin       管理员：业务内容生产者（知识库 / 资料入库 / 流程配置 / 评测数据），
-              可管理普通用户，数据全局可见，创建内容时可设置可见范围
-- super_admin 超管：唯一内置账号，额外拥有角色分配、管理员管理能力，不可删除 / 降级
+角色模型（两级，2026-10-25 收敛）：
+- user        普通用户：全部业务功能可用（AI 问答 / 流程 / 任务 / 确认 / 备忘录 /
+              知识库 / 资料入库 / 流程配置），内容默认仅自己可见，可检索自己的 + 被共享的
+- super_admin 超管：唯一内置账号，额外拥有 API Key 配置、评测数据、用户管理、
+              数据全局可见与共享范围设置能力，不可删除 / 降级
 
-内容可见范围（三态，管理员/超管可设置，普通用户一律仅自己）：
+历史说明：曾存在中间角色 admin（业务管理员），已收敛进 super_admin；
+数据库中残留的 role='admin' 会在启动迁移时统一降级为 user。
+
+内容可见范围（三态，超管可设置，普通用户一律仅自己）：
 - private 仅自己
-- all     全员共享（所有用户/管理员/超管可见可检索）
+- all     全员共享（所有用户可见可检索）
 - custom  定向共享（仅 shared_user_ids 列表中的用户可见，只读）
 """
 from sqlalchemy import or_, and_, cast, String
 
 ROLE_USER = "user"
-ROLE_ADMIN = "admin"
+ROLE_ADMIN = "admin"  # 历史角色：仅用于识别旧数据，不再可分配
 ROLE_SUPER_ADMIN = "super_admin"
 
-STAFF_ROLES = (ROLE_ADMIN, ROLE_SUPER_ADMIN)
-ALL_ROLES = (ROLE_USER, ROLE_ADMIN, ROLE_SUPER_ADMIN)
+STAFF_ROLES = (ROLE_SUPER_ADMIN,)
+ALL_ROLES = (ROLE_USER, ROLE_SUPER_ADMIN)
 
 # ===== 内容可见范围（三态） =====
 VIS_PRIVATE = "private"   # 仅自己可见
@@ -30,13 +32,13 @@ VISIBILITY_CHOICES = (VIS_PRIVATE, VIS_ALL, VIS_CUSTOM)
 
 ROLE_LABELS = {
     ROLE_USER: "普通用户",
-    ROLE_ADMIN: "管理员",
+    ROLE_ADMIN: "普通用户",  # 历史角色，展示层按普通用户处理
     ROLE_SUPER_ADMIN: "超级管理员",
 }
 
 
 def is_staff(user) -> bool:
-    """管理员及以上：可进后台、可见全局数据、创建的内容默认共享"""
+    """超管：可进后台、可见全局数据、创建的内容默认共享"""
     return getattr(user, "role", None) in STAFF_ROLES
 
 
@@ -47,14 +49,12 @@ def is_super_admin(user) -> bool:
 def assignable_roles(operator) -> list:
     """当前操作者可分配的角色（超管唯一，不可被创建或提升）"""
     if is_super_admin(operator):
-        return [ROLE_USER, ROLE_ADMIN]
-    if is_staff(operator):
         return [ROLE_USER]
     return []
 
 
 def can_manage_user(operator, target) -> bool:
-    """用户管理矩阵：超管管理管理员与普通用户；管理员只管理普通用户。
+    """用户管理矩阵：超管管理普通用户。
 
     自己的资料可以改（角色另判），所以本人直接放行。
     """
@@ -62,8 +62,6 @@ def can_manage_user(operator, target) -> bool:
         return True
     if is_super_admin(operator):
         return target.role in (ROLE_USER, ROLE_ADMIN)
-    if getattr(operator, "role", None) == ROLE_ADMIN:
-        return target.role == ROLE_USER
     return False
 
 

@@ -13,7 +13,7 @@ from app.schemas.user import (
 )
 from app.services.user_service import get_user_by_username, create_user, authenticate_user, update_api_keys
 from app.core.security import create_access_token, decrypt_api_key, hash_password
-from app.core.deps import get_current_user, get_current_staff
+from app.core.deps import get_current_user, get_current_staff, get_current_super_admin
 from app.core.roles import (
     ROLE_USER, ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_LABELS,
     is_staff, is_super_admin, assignable_roles, can_manage_user, can_change_role,
@@ -160,7 +160,8 @@ def delete_user_by_admin(
 
 
 @router.get("/api-keys", response_model=APIKeyResponse)
-def get_api_keys(current_user: User = Depends(get_current_user)):
+def get_api_keys(current_user: User = Depends(get_current_super_admin)):
+    """API Key 配置仅超管可用；普通用户的回答走系统默认 Key（.env 的 DEFAULT_*）"""
     return APIKeyResponse(
         llm_base_url=current_user.llm_base_url,
         llm_model=current_user.llm_model,
@@ -171,7 +172,7 @@ def get_api_keys(current_user: User = Depends(get_current_user)):
 
 
 @router.put("/api-keys", response_model=APIKeyResponse)
-def update_api_keys_endpoint(keys: APIKeyUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_api_keys_endpoint(keys: APIKeyUpdate, current_user: User = Depends(get_current_super_admin), db: Session = Depends(get_db)):
     user = update_api_keys(db, current_user, keys)
     return APIKeyResponse(
         llm_base_url=user.llm_base_url,

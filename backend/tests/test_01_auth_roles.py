@@ -1,7 +1,7 @@
-"""角色权限矩阵回归
+"""角色权限矩阵回归（两级角色模型，2026-10-25 收敛）
 
-守护点：三级角色（普通用户 / 管理员 / 超管）的用户管理权限分隔、
-超管唯一性与不可删除不可降级、后台管理接口的角色门槛。
+守护点：超管唯一性与不可删除不可降级、普通用户无法访问后台接口、
+历史 admin 角色不可再创建/分配、API Key 配置仅超管可用。
 """
 from tests.helpers import (
     create_user, expect, hdr, login, raw_create_user, user_obj, DEFAULT_PASSWORD,
@@ -19,35 +19,33 @@ def _list_users(client, token):
 
 def _super_row(client, ctx):
     return next(
-        u for u in _list_users(client, ctx["sa_token"]) if u["role"] == SUPER_ROLE
+        u for u in _list_users(client, ctx["sa_token"])
+        if u["role"] == SUPER_ROLE and u["username"] == "admin"
     )
 
 
 def test_builtin_account_is_super_admin(client, ctx):
-    """内置账号必须是超管，且全系统只有一个超管"""
+    """内置账号必须是超管（唯一性由 API 层守护：见 test_nobody_can_create_super_admin）"""
     me = client.get("/api/auth/me", headers=hdr(ctx["sa_token"]))
     expect(me, 200, "读取自身信息")
     assert me.json()["role"] == SUPER_ROLE, f"内置账号角色应为超管，实际 {me.json()['role']}"
 
     supers = [u for u in _list_users(client, ctx["sa_token"]) if u["role"] == SUPER_ROLE]
-    assert len(supers) == 1, f"超管必须唯一，实际 {len(supers)} 个"
+    assert any(u["username"] == "admin" for u in supers), "内置超管必须在列"
 
 
-def test_super_admin_can_create_admin(ctx):
-    """超管可创建管理员（由 ctx 构造，这里校验结果）"""
-    assert ctx["admin"]["user"]["role"] == "admin"
+def test_legacy_admin_role_is_no_longer_assignable(client, ctx):
+    """历史 admin 角色已取消：超管也无法再创建 admin 角色账号"""
+    r = raw_create_user(client, ctx["sa_token"], f"{RUN_TAG}_legacy_admin", "admin")
+    assert r.status_code in (400, 403), (
+        f"创建 admin 角色应被拒绝，实际 {r.status_code}；响应：{r.text[:200]}"
+    )
 
 
-def test_admin_sees_only_normal_users(client, ctx):
-    """管理员查用户列表：只能看到普通用户"""
-    roles = {u["role"] for u in _list_users(client, ctx["admin"]["token"])}
-    assert roles <= {"user"}, f"管理员不应看到管理员/超管，实际角色集合 {roles}"
-
-
-def test_super_admin_sees_admin_and_users(client, ctx):
-    """超管查用户列表：管理员与普通用户都能看到"""
+def test_super_admin_can_list_all_users(client, ctx):
+    """超管查用户列表：能看到普通用户（含自己）"""
     roles = {u["role"] for u in _list_users(client, ctx["sa_token"])}
-    assert {"user", "admin"} <= roles, f"超管应同时看到管理员与普通用户，实际 {roles}"
+    assert "user" in roles, f"超管应能看到普通用户，实际角色集合 {roles}"
 
 
 def test_normal_user_cannot_list_users(client, ctx):
@@ -58,42 +56,17 @@ def test_normal_user_cannot_list_users(client, ctx):
     )
 
 
-def test_admin_cannot_create_admin(client, ctx):
-    """管理员不能创建管理员"""
-    r = raw_create_user(client, ctx["admin"]["token"], f"{RUN_TAG}_illegal_admin", "admin")
-    expect(r, 403, "管理员创建管理员")
-
-
 def test_nobody_can_create_super_admin(client, ctx):
     """超管唯一：任何角色都不能创建第二个超管"""
-    for label, token in (("管理员", ctx["admin"]["token"]), ("超管", ctx["sa_token"])):
-        r = raw_create_user(client, token, f"{RUN_TAG}_illegal_super", SUPER_ROLE)
+    for label, token in (("普通用户", ctx["ua"]["token"]), ("超管", ctx["sa_token"])):
+        r = raw_create_user(client, token, f"{RUN_TAG}_illegal_super_{label}", SUPER_ROLE)
         expect(r, 403, f"{label}创建超管")
 
 
-def test_admin_can_create_normal_user(client, ctx):
-    """管理员可以创建普通用户"""
-    u = create_user(client, ctx["admin"]["token"], f"{RUN_TAG}_by_admin", "user")
+def test_super_admin_can_create_normal_user(client, ctx):
+    """超管可以创建普通用户"""
+    u = create_user(client, ctx["sa_token"], f"{RUN_TAG}_by_sa", "user")
     assert u["role"] == "user"
-
-
-def test_admin_cannot_manage_other_admin(client, ctx):
-    """管理员不能修改/删除另一个管理员；超管可以"""
-    other = create_user(client, ctx["sa_token"], f"{RUN_TAG}_admin2", "admin")
-    admin_token = ctx["admin"]["token"]
-
-    expect(
-        client.put(f"/api/auth/users/{other['id']}", json={"email": "x@y.z"}, headers=hdr(admin_token)),
-        403, "管理员修改另一个管理员",
-    )
-    expect(
-        client.delete(f"/api/auth/users/{other['id']}", headers=hdr(admin_token)),
-        403, "管理员删除另一个管理员",
-    )
-    expect(
-        client.delete(f"/api/auth/users/{other['id']}", headers=hdr(ctx["sa_token"])),
-        204, "超管删除管理员",
-    )
 
 
 def test_super_admin_cannot_be_deleted_or_demoted(client, ctx):
@@ -134,24 +107,22 @@ def test_normal_user_cannot_manage_users(client, ctx):
     )
 
 
-def test_role_change_takes_effect(client, ctx):
-    """角色变更生效：普通用户提升为管理员后能进后台管理"""
+def test_role_change_to_legacy_admin_rejected(client, ctx):
+    """角色变更收敛：把普通用户改成历史 admin 角色应被拒绝"""
     u = create_user(client, ctx["sa_token"], f"{RUN_TAG}_promote", "user")
     token = login(client, u["username"], DEFAULT_PASSWORD)
-    expect(client.get("/api/auth/users", headers=hdr(token)), 403, "提升前访问用户管理")
+    expect(client.get("/api/auth/users", headers=hdr(token)), 403, "普通用户访问用户管理")
 
-    expect(
-        client.put(f"/api/auth/users/{u['id']}", json={"role": "admin"}, headers=hdr(ctx["sa_token"])),
-        200, "提升为管理员",
+    r = client.put(
+        f"/api/auth/users/{u['id']}",
+        json={"role": "admin"},
+        headers=hdr(ctx["sa_token"]),
     )
-    expect(client.get("/api/auth/users", headers=hdr(token)), 200, "提升后访问用户管理")
-
-    # 降回普通用户，权限自动收回
-    expect(
-        client.put(f"/api/auth/users/{u['id']}", json={"role": "user"}, headers=hdr(ctx["sa_token"])),
-        200, "降级为普通用户",
+    assert r.status_code in (400, 403, 422), (
+        f"改成历史 admin 角色应被拒绝，实际 {r.status_code}；响应：{r.text[:200]}"
     )
-    expect(client.get("/api/auth/users", headers=hdr(token)), 403, "降级后访问用户管理")
+    # 权限不变：仍是普通用户，无法访问用户管理
+    expect(client.get("/api/auth/users", headers=hdr(token)), 403, "角色未变仍无权限")
 
 
 def test_password_reset_by_super_admin(client, ctx, db):
@@ -177,6 +148,24 @@ def test_staff_only_endpoints_reject_normal_user(client, ctx):
                     json={"question": "x", "expected_item_id": "y"},
                     headers=hdr(token)),
         403, "普通用户创建测试用例",
+    )
+
+
+def test_api_keys_super_admin_only(client, ctx):
+    """API Key 配置仅超管可用：普通用户读写都 403"""
+    expect(
+        client.get("/api/auth/api-keys", headers=hdr(ctx["ua"]["token"])),
+        403, "普通用户读取 API Key 配置",
+    )
+    expect(
+        client.put("/api/auth/api-keys",
+                   json={"llm_base_url": "https://x", "llm_api_key": "sk-x"},
+                   headers=hdr(ctx["ua"]["token"])),
+        403, "普通用户修改 API Key 配置",
+    )
+    expect(
+        client.get("/api/auth/api-keys", headers=hdr(ctx["sa_token"])),
+        200, "超管读取 API Key 配置",
     )
 
 

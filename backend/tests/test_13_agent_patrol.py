@@ -602,7 +602,8 @@ def test_run_patrol_end_to_end(db, ctx):
     )
     assert result["ok"] is True
     assert result["status"] == "ok", result["errors"]
-    assert result["scope"] == "me"
+    # 两级角色模型：regr_admin 已是超管 → 全站 scope（原三级角色下该账号是管理员，scope=me）
+    assert result["scope"] == "all"
     assert result["counts"]["stale"] >= 1
     assert result["counts"]["gap_clusters"] >= 1
     assert result["counts"]["quality"] >= 1
@@ -612,7 +613,8 @@ def test_run_patrol_end_to_end(db, ctx):
 
     row = db.query(PatrolReport).filter(PatrolReport.id == result["report_id"]).first()
     assert row is not None
-    assert row.scope == "me"
+    # 两级角色模型：regr_admin 已是超管 → 报告 scope 为 all
+    assert row.scope == "all"
     assert row.counts["quality"] >= 1
     assert db.query(PatrolReport).count() >= 1
 
@@ -738,9 +740,9 @@ def test_api_run_forbidden_for_normal_user(client, ctx):
 
 def test_api_run_all_forbidden_for_admin(client, ctx):
     r = client.post(
-        "/api/agent/patrol", json={"scope": "all"}, headers=hdr(ctx["admin"]["token"])
+        "/api/agent/patrol", json={"scope": "all"}, headers=hdr(ctx["ua"]["token"])
     )
-    expect(r, 403, "全站巡检仅超管")
+    expect(r, 403, "全站巡检仅超管（普通用户被拒）")
 
 
 def test_api_run_invalid_scope(client, ctx):

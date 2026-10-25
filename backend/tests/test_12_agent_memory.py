@@ -963,11 +963,11 @@ def test_api_memory_stats_requires_staff(client, ctx):
 
 
 def test_api_rebuild_other_user_requires_super_admin(client, ctx):
-    other = ctx["ua"]["user"]["id"]
+    other = ctx["ub"]["user"]["id"]
     expect(
-        client.post("/api/memory/rebuild", json={"user_id": other}, headers=hdr(ctx["admin"]["token"])),
+        client.post("/api/memory/rebuild", json={"user_id": other}, headers=hdr(ctx["ua"]["token"])),
         403,
-        "管理员重建他人记忆",
+        "普通用户重建他人记忆",
     )
     expect(
         client.post("/api/memory/rebuild", json={"user_id": other}, headers=hdr(ctx["sa_token"])),
