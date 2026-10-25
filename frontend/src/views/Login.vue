@@ -72,7 +72,8 @@ async function handleLogin() {
   try {
     await userStore.login(loginForm.value.username, loginForm.value.password)
     ElMessage.success('登录成功')
-    router.push('/')
+    // 两级角色：超管落用户管理，普通用户落 AI 问答
+    router.push(userStore.isSuperAdmin() ? '/admin/users' : '/')
   } catch (e) {
     // 错误已在拦截器处理
   } finally {

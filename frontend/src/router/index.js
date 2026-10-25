@@ -117,6 +117,9 @@ router.beforeEach((to, from, next) => {
   } else if (to.meta.requiresStaff && !userStore.isStaff()) {
     // 非管理员访问后台
     next({ path: '/' })
+  } else if (to.path === '/' && userStore.isSuperAdmin()) {
+    // 两级角色：超管没有业务菜单，落地页为用户管理
+    next({ path: '/admin/users' })
   } else {
     next()
   }

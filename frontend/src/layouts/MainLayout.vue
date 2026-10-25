@@ -14,19 +14,19 @@
         :collapse="collapsed"
         :collapse-transition="false"
       >
-        <el-menu-item index="/">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/">
           <el-icon><ChatDotRound /></el-icon>
           <span>AI 问答</span>
         </el-menu-item>
-        <el-menu-item index="/flow">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/flow">
           <el-icon><Guide /></el-icon>
           <span>流程下一步</span>
         </el-menu-item>
-        <el-menu-item index="/tasks">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/tasks">
           <el-icon><List /></el-icon>
           <span>我的任务</span>
         </el-menu-item>
-        <el-menu-item index="/confirmations">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/confirmations">
           <el-icon><Stamp /></el-icon>
           <template #title>
             <span class="menu-label">
@@ -37,19 +37,19 @@
             </span>
           </template>
         </el-menu-item>
-        <el-menu-item index="/memos">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/memos">
           <el-icon><Memo /></el-icon>
           <span>备忘录</span>
         </el-menu-item>
-        <el-menu-item index="/admin/items">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/admin/items">
           <el-icon><Collection /></el-icon>
           <span>知识库管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/ingest">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/admin/ingest">
           <el-icon><Upload /></el-icon>
           <span>资料入库</span>
         </el-menu-item>
-        <el-menu-item index="/admin/flows">
+        <el-menu-item v-if="!userStore.isSuperAdmin()" index="/admin/flows">
           <el-icon><Connection /></el-icon>
           <span>流程配置</span>
         </el-menu-item>
