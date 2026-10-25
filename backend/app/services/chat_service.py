@@ -698,7 +698,7 @@ async def get_answer_stream(user: User, question: str, db: Session) -> AsyncGene
         llm = get_llm_for_user(user)
     except ValueError as e:
         # 配置类错误要作为一条回答返回，而不是抛异常让前端一直转圈
-        yield f"data: 当前账号还没有配置 LLM API Key，暂时无法生成回答。请到【API Key 配置】页配置后再试：{e}\n\n"
+        yield f"data: {e}（系统级模型配置由超管在【API Key 配置】页统一维护）\n\n"
         yield "data: [DONE]\n\n"
         return
 

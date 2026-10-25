@@ -174,3 +174,27 @@ def test_created_user_is_usable(client, ctx, db):
     u = create_user(client, ctx["sa_token"], f"{RUN_TAG}_login_ok", "user")
     assert login(client, u["username"], DEFAULT_PASSWORD)
     assert user_obj(db, u["username"]).role == "user"
+
+
+def test_llm_falls_back_to_super_admin_config(client, ctx, db):
+    """两级角色兜底链：普通用户未配 Key 时，自动使用超管的模型配置"""
+    from app.services.llm_service import get_llm_for_user
+    from app.core.security import encrypt_api_key
+
+    sa_user = user_obj(db, "admin")
+    ua = user_obj(db, ctx["ua"]["user"]["username"])
+    assert not ua.llm_api_key, "前提：ua 未自己配置 Key"
+
+    old = (sa_user.llm_api_key, sa_user.llm_base_url, sa_user.llm_model)
+    sa_user.llm_api_key = encrypt_api_key("sk-super-test")
+    sa_user.llm_base_url = "https://dashscope.example.com/compatible-mode/v1"
+    sa_user.llm_model = "qwen-test"
+    db.commit()
+    try:
+        llm = get_llm_for_user(ua, db)
+        assert llm.model_name == "qwen-test", "模型名应跟随超管配置"
+        assert "dashscope.example.com" in str(llm.openai_api_base), "Base URL 应跟随超管配置"
+        assert llm.openai_api_key.get_secret_value() == "sk-super-test", "Key 应使用超管的"
+    finally:
+        sa_user.llm_api_key, sa_user.llm_base_url, sa_user.llm_model = old
+        db.commit()
