@@ -613,6 +613,8 @@ async function handleToggle(memo) {
     await toggleMemo(memo.id)
     memo.is_completed = !memo.is_completed
     ElMessage.success(memo.is_completed ? '已完成' : '已恢复为待办')
+    // 重新拉取：toggle 也会刷新 updated_at，完成/恢复后列表顺序要与后端排序一致
+    loadMemos()
     loadStats()
   } catch (e) {
     // 错误已在拦截器处理

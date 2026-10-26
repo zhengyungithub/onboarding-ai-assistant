@@ -40,7 +40,18 @@ def get_memos(
         folder_ids = [folder_id] + get_descendant_ids(db, user_id, folder_id)
         query = query.filter(Memo.folder_id.in_(folder_ids))
     total = query.count()
-    items = query.order_by(Memo.is_completed.asc(), Memo.created_at.desc()).offset(skip).limit(limit).all()
+    # 未完成在前；同组内按 updated_at 降序——编辑过的待办浮到最上方，不「沉底」；
+    # created_at 作同秒并列时的稳定次序
+    items = (
+        query.order_by(
+            Memo.is_completed.asc(),
+            Memo.updated_at.desc(),
+            Memo.created_at.desc(),
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return total, items
 
 

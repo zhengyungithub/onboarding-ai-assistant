@@ -178,3 +178,57 @@ def test_folder_aggregate_view(client, ctx):
     for m in body(r)["items"]:
         if m["title"].startswith("聚合-"):
             client.delete(f"{MEMO_API}/{m['id']}", headers=hdr(token))
+
+
+# ===== 6. 编辑后的待办浮到列表顶部（updated_at 降序） =====
+
+def test_edited_memo_floats_to_top(client, ctx):
+    """守护点：修改任意一条待办后，它应出现在未完成分组的最新位置，不「沉底」。
+
+    排序规则：is_completed 升序 → updated_at 降序 → created_at 降序。
+    """
+    import time
+
+    token = ctx["ua"]["token"]
+
+    created = []
+    for t in ("排序-最早创建", "排序-中间创建", "排序-最晚创建"):
+        created.append(_make_memo(client, token, t))
+        time.sleep(0.02)  # 保证 created_at 严格递增
+
+    # 初始：最晚创建的排最前
+    r = client.get(MEMO_API, params={"limit": 50}, headers=hdr(token))
+    expect(r, 200, "备忘录列表")
+    titles = [m["title"] for m in body(r)["items"]]
+    assert titles.index("排序-最晚创建") < titles.index("排序-最早创建"), "新创建的应排前面"
+
+    # 编辑「最早创建」的那条 → 应浮到未完成分组最上方
+    target = created[0]
+    time.sleep(0.05)
+    r = client.put(
+        f"{MEMO_API}/{target['id']}",
+        json={"title": "排序-最早创建(已编辑)"},
+        headers=hdr(token),
+    )
+    expect(r, 200, "编辑最早的备忘录")
+    assert body(r)["updated_at"] >= body(r)["created_at"], "编辑后 updated_at 应被刷新"
+
+    r = client.get(MEMO_API, params={"limit": 50}, headers=hdr(token))
+    titles = [m["title"] for m in body(r)["items"]]
+    assert "排序-最早创建(已编辑)" in titles, "编辑后的标题应在列表中"
+    assert titles[0] == "排序-最早创建(已编辑)", (
+        f"编辑过的待办应浮到最上方，实际第一项: {titles[0]}"
+    )
+
+    # toggle 完成后应沉到未完成分组之后（is_completed 升序在前）
+    r = client.patch(f"{MEMO_API}/{target['id']}/toggle", headers=hdr(token))
+    expect(r, 200, "切换完成状态")
+    r = client.get(MEMO_API, params={"limit": 50}, headers=hdr(token))
+    items = body(r)["items"]
+    completed_ids = [m["id"] for m in items if m["is_completed"]]
+    pending_ids = [m["id"] for m in items if not m["is_completed"]]
+    assert target["id"] in completed_ids and target["id"] not in pending_ids
+
+    # 清理
+    for m in created:
+        client.delete(f"{MEMO_API}/{m['id']}", headers=hdr(token))
